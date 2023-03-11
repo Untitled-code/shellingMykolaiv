@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Миколаївщина під обстрілами</title>
+  <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+  <link href="https://api.mapbox.com/mapbox-gl-js/v2.12.0/mapbox-gl.css" rel="stylesheet">
+  <script src="https://api.mapbox.com/mapbox-gl-js/v2.12.0/mapbox-gl.js"></script>
+  <style>
+    body { margin: 0; padding: 0; }
+    #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+  </style>
+</head>
+<body>
+<style>
+  .map-overlay {
+    font: 12px/20px 'Helvetica Neue', Arial, Helvetica, sans-serif;
+    position: absolute;
+    width: 25%;
+    top: 0;
+    left: 0;
+    padding: 10px;
+  }
+
+  .map-overlay .map-overlay-inner {
+    background-color: #fff;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    border-radius: 3px;
+    padding: 10px;
+    margin-bottom: 10px;
+  }
+
+  .map-overlay h2 {
+    line-height: 24px;
+    display: block;
+    margin: 0 0 10px;
+  }
+
+  .map-overlay .legend .bar {
+    height: 10px;
+    width: 100%;
+    background: linear-gradient(to right, #fca107, #7f3121);
+  }
+
+  .map-overlay input {
+    background-color: transparent;
+    display: inline-block;
+    width: 100%;
+    position: relative;
+    margin: 0;
+    cursor: ew-resize;
+  }
+</style>
+
+<div id="map"></div>
+
+<div class="map-overlay top">
+  <div class="map-overlay-inner">
+    <h2>З чого обстрілювали Миколаївщину у 2022 році</h2>
+    <label id="month"></label>
+    <input id="slider" type="range" min="0" max="11" step="1" value="0">
+  </div>
+  <div class="map-overlay-inner">
+    <div id="legend" class="legend">
+<!--      <div class="bar"></div>-->
+      <div>Види озброєнь
+        <p>Артилерія та РСЗВ</p>
+        <p>Ракети</p>
+        <p>Касетні боєприпаси</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!--That is better I got 3 icons, but get errors.
+Error:
+evented.js:150 Error: The layer 'targets-Mykolaiv' does not exist in the map's style and cannot be styled.-->
+<script src="https://d3js.org/d3.v3.min.js" charSet="utf-8"></script>
+<script>
+  mapboxgl.accessToken = 'pk.eyJ1Ijoib2tvcnNhY2giLCJhIjoiY2xjbmc1bm1xMGNjNDN3bXJmNTZ3OGFjdyJ9.MF70WZV3iMroc85YF-xtOw';
+  const map = new mapboxgl.Map({
+    container: 'map',
+    style: 'mapbox://styles/mapbox/light-v11',
+    center: [31.9818479644837, 46.9625154],
+    zoom: 8
+  });
+
+  const months = [
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December'
+  ];
+
+  const icons = {
+    'Ракети': './rocket.svg',
+    // 'Ракети': './icons8-dota-2.svg',
+    // 'Артилерія та РСЗВ': './icons8-batman.svg',
+    'Артилерія та РСЗВ': './arta.svg',
+    'Дрони-камікадзе': './drone.svg'
+  };
+
+  function filterBy(month) {
+    const monthArray = [];
+    for (let i = 0; i < month + 2; i += 2) {
+      let currMonth = i % 12;
+      monthArray.push(currMonth);
+    }
+    const filters = ['in', 'month', ...monthArray];
+    map.setFilter('targets-Mykolaiv', filters);
+    document.getElementById('month').textContent = months[0] + ' - ' + months[(month + 1) % 12];
+  }
+
+  map.on('load', () => {
+    d3.json('./data1.geojson', jsonCallback);
+  });
+
+  function jsonCallback(err, data) {
+    if (err) {
+      throw err;
+    }
+    data.features = data.features.map((d) => {
+      d.properties.month = new Date(d.properties.timestamp).getMonth();
+      return d;
+    });
+    map.addSource('shelling', {
+      'type': 'geojson',
+      data: data
+    });
+
+    // create a separate layer for each type of weapon
+    Object.keys(icons).forEach(weapon => {
+      map.addLayer({
+        'id': `targets-Mykolaiv-${weapon}`,
+        'type': 'symbol',
+        'source': 'shelling',
+        'filter': ['==', 'sheet_name', weapon],
+        'layout': {
+          'icon-image': `weapon-icon-${weapon}`,
+          'icon-size': 0.13
+        }
+      });
+    });
+
+    data.features.forEach(readGeojson);
+
+    // rest of the code...
+
+
+    function readGeojson(item) {
+      let weapon = item.properties.sheet_name;
+      console.log(weapon);
+      if (icons[weapon]) {
+        const imageUrl = icons[weapon];
+        console.log(imageUrl);
+        const imageId = `weapon-icon-${weapon}`; // add a unique identifier
+        console.log(imageId);
+        if (!map.hasImage(imageId)) {
+          const img = new Image();
+          img.onload = function () {
+            // map.addImage(imageId, img);
+            if (!map.hasImage(imageId)) {
+              map.addImage(imageId, img);
+            }
+
+            map.setLayoutProperty('targets-Mykolaiv', 'icon-image', ['match', ['get', 'sheet_name'], weapon, imageId, '']);
+          };
+          img.src = imageUrl;
+        } else {
+          map.setLayoutProperty('targets-Mykolaiv', 'icon-image', ['match', ['get', 'sheet_name'], weapon, imageId, '']);
+        }
+      }
+    }
+
+
+
+    document.getElementById('slider').addEventListener('input', (e) => {
+      const month = parseInt(e.target.value, 10);
+      filterBy(month);
+    });
+  }
+
+</script>
+
+</body>
+</html>
