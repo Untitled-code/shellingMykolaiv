@@ -95,7 +95,8 @@
         });
 
         map.on('load', () => {
-            d3.json('./data1.geojson', jsonCallback);
+            // d3.json('./data1.geojson', jsonCallback);
+            d3.json('./data_weapon.geojson', jsonCallback);
         });
 
         const months = [
@@ -128,7 +129,6 @@
             'Дрони-камікадзе'
         ]
 
-
         function filterBy(month) {
             const monthArray = [];
             for (let i = 0; i < month + 2; i++) { //changed i to 0 and step 2
@@ -142,8 +142,6 @@
             })
             document.getElementById('month').textContent = months[0] + ' - ' + months[(month + 1) % 12]; //it displays range from January (0) and the month
         }
-
-
 
         function jsonCallback(err, data) {
             if (err) {
@@ -167,7 +165,7 @@
                     'filter': ['==', 'sheet_name', weapon],
                     'layout': {
                         'icon-image': `weapon-icon-${weapon}`,
-                        'icon-size': 0.13
+                        'icon-size': 0.11
                     }
                 });
             });
@@ -175,8 +173,6 @@
             data.features.forEach(readGeojson);
 
             // rest of the code...
-
-
             function readGeojson(item) {
                 let weapon = item.properties.sheet_name;
                 console.log(weapon);
@@ -201,8 +197,6 @@
                     }
                 }
             }
-
-
 
             document.getElementById('slider').addEventListener('input', (e) => {
                 const month = parseInt(e.target.value, 10);
