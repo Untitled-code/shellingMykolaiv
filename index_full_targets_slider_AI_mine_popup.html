@@ -110,7 +110,8 @@
   }
 
   map.on('load', () => {
-    d3.json('./data2.geojson', jsonCallback);
+    d3.json('./data_targets.geojson', jsonCallback);
+    // d3.json('./data2.geojson', jsonCallback);
   });
 
   function jsonCallback(err, data) {

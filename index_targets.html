@@ -96,7 +96,7 @@
 
         map.on('load', () => {
             // d3.json('./data1.geojson', jsonCallback);
-            d3.json('./data_weapon.geojson', jsonCallback);
+            d3.json('./data_targets.geojson', jsonCallback);
         });
 
 
@@ -105,7 +105,7 @@
         const today = new Date();
         // Calculate the number of weeks between start date and today
         const weeksDiff = Math.floor((today - startDate) / (1000 * 60 * 60 * 24 * 7));
-        const months = [];
+        const months = []; //the variable should 'weeks', but left the same
         // Generate dates for each week
         for (var i = 0; i <= weeksDiff; i++) {
             var date = new Date(startDate.getTime());
@@ -115,28 +115,37 @@
 
 
         const icons = {
-            'rockets': './rocket_ai.svg',
-            'artyllery': './arta.svg',
-            'drones': './drone.svg',
-            'cluster_bombs': './drone.svg',
-            'mines': './drone.svg'
+            'admin_buildings': './drone.svg',
+            'agri': './drone.svg',
+            'civil_infrastructure': './drone.svg',
+            'critical_infrastracture': './drone.svg',
+            'culture': './drone.svg',
+            'factories': './drone.svg',
+            'hospitals': './drone.svg',
+            'houses': './drone.svg',
+            'schools': './drone.svg',
+
         };
         // тут мають бути назви типів зброї, які додаються потім до назв шарів
         var uniquetypes = [
-            'rockets',
-            'artyllery',
-            'drones',
-            'cluster_bombs',
-            'mines'
+            'admin_buildings',
+            'agri',
+            'civil_infrastructure',
+            'critical_infrastracture',
+            'culture',
+            'factories',
+            'hospitals',
+            'houses',
+            'schools'
         ]
 
         function filterBy(month) {
             const monthArray = [];
             for (let i = 0; i < month + 2; i++) { //changed i to 0 and step 2
                 let currMonth = i % weeksDiff;
-                console.log("currmonth:" + currMonth)
+                //console.log("currmonth:" + currMonth)
                 monthArray.push(currMonth)
-                console.log("mothArray:" + monthArray);
+                //console.log("mothArray:" + monthArray);
             }
             const filters = ['in', 'month', ...monthArray];
             uniquetypes.forEach((e) => {
@@ -153,7 +162,8 @@
             data.features = data.features.map((d) => {
                 const oneWeek = 1000 * 60 * 60 * 24 * 7; // milliseconds in one week
                 d.properties.month = Math.floor((new Date(d.properties.timestamp) - startDate) / oneWeek); // calculate the week number
-                // d.properties.month = new Date(d.properties.timestamp).getMonth();
+                // d.properties.month = new Date(d.properties.timestamp).getMonth(); //gets number of month and refers it to the slider positione (weekDiff)
+                console.log(d)
                 return d;
             });
             map.addSource('shelling', {
@@ -202,6 +212,26 @@
                     }
                 }
             }
+            /*popup block*/
+            Object.keys(icons).forEach(weapon => {
+                map.on('click', (event) => {
+                    const features = map.queryRenderedFeatures(event.point, {
+                        layers: [`targets-Mykolaiv-${weapon}`]
+                    });
+                    if (!features.length) {
+                        return;
+                    }
+                    const feature = features[0];
+
+                    const popup = new mapboxgl.Popup({ offset: [0, -15] })
+                        .setLngLat(feature.geometry.coordinates)
+                        .setHTML(
+                            `\<p>${feature.properties.description}</p>
+                           \<p>${feature.properties.date}</p>`
+                        )
+                        .addTo(map);
+                });
+            });
 
             document.getElementById('slider').addEventListener('input', (e) => {
                 const month = parseInt(e.target.value, 10);
