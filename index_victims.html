@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Миколаївщина під обстрілами</title>
+    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+    <link href="https://api.mapbox.com/mapbox-gl-js/v2.12.0/mapbox-gl.css" rel="stylesheet">
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.12.0/mapbox-gl.js"></script>
+    <script src="https://underscorejs.org/underscore-min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+        }
+        
+        #map {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 100%;
+        }
+    </style>
+</head>
+
+<body>
+    <style>
+        .map-overlay {
+            font: 12px/20px 'Helvetica Neue', Arial, Helvetica, sans-serif;
+            position: absolute;
+            width: 25%;
+            top: 0;
+            left: 0;
+            padding: 10px;
+        }
+        
+        .map-overlay .map-overlay-inner {
+            background-color: #fff;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+            border-radius: 3px;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .map-overlay h2 {
+            line-height: 24px;
+            display: block;
+            margin: 0 0 10px;
+        }
+        
+        .map-overlay .legend .bar {
+            height: 10px;
+            width: 100%;
+            background: linear-gradient(to right, #fca107, #7f3121);
+        }
+        
+        .map-overlay input {
+            background-color: transparent;
+            display: inline-block;
+            width: 100%;
+            position: relative;
+            margin: 0;
+            cursor: ew-resize;
+        }
+    </style>
+
+    <div id="map"></div>
+
+    <!-- Putting js variable into slider htaml to make scale correct   -->
+    <div class="map-overlay top">
+        <div class="map-overlay-inner">
+            <h2>Скільки цивільних людей вбили та поранили рашисти</h2>
+            <label id="month"></label>
+            <input id="slider" type="range" min="0" step="1" value="0">
+        </div>
+    </div>
+    <script>
+        const sDate = new Date("2022-02-24");
+        const tday = new Date();
+        // Calculate the number of weeks between start date and today
+        const wDiff = Math.floor((tday - sDate) / (1000 * 60 * 60 * 24 * 7) - 2);
+
+        window.onload = function() {
+            // Set the max attribute of the slider
+            document.getElementById('slider').max = wDiff;
+        }
+    </script>
+
+    <script src="https://d3js.org/d3.v3.min.js" charSet="utf-8"></script>
+    <script>
+        mapboxgl.accessToken = 'pk.eyJ1Ijoib2tvcnNhY2giLCJhIjoiY2xjbmc1bm1xMGNjNDN3bXJmNTZ3OGFjdyJ9.MF70WZV3iMroc85YF-xtOw';
+        const map = new mapboxgl.Map({
+            container: 'map',
+            style: 'mapbox://styles/mapbox/light-v11',
+            center: [31.9818479644837, 46.9625154],
+            zoom: 8
+        });
+
+        map.on('load', () => {
+            // d3.json('./data1.geojson', jsonCallback);
+            d3.json('./data_victims.geojson', jsonCallback);
+        });
+
+
+        //Generating dates for the slider
+        const startDate = new Date("2022-02-24");
+        const today = new Date();
+        // Calculate the number of weeks between start date and today
+        const weeksDiff = Math.floor((today - startDate) / (1000 * 60 * 60 * 24 * 7));
+        const months = []; //the variable should 'weeks', but left the same
+        // Generate dates for each week
+        for (var i = 0; i <= weeksDiff; i++) {
+            var date = new Date(startDate.getTime());
+            date.setDate(date.getDate() + (i * 7)); // add i weeks
+            months.push(date.toLocaleDateString('uk-UK')); //user local format of displaying dates
+        }
+
+        //each layer/sheetname has its own color
+        const icons = {
+            'killed': '#b91f06',
+            'injured': '#ff9306'
+        };
+        // тут мають бути назви типів зброї, які додаються потім до назв шарів
+        var uniquetypes = [
+            'killed',
+            'injured'
+        ]
+
+
+        function filterBy(month) {
+            const monthArray = [];
+            for (let i = 0; i < month + 2; i++) { //changed i to 0 and step 2
+                let currMonth = i % weeksDiff;
+                //console.log("currmonth:" + currMonth)
+                monthArray.push(currMonth)
+                //console.log("mothArray:" + monthArray);
+            }
+            const filters = ['in', 'month', ...monthArray];
+            uniquetypes.forEach((e) => {
+                // console.log(e)
+                map.setFilter(`targets-Mykolaiv-${e}`, filters);
+            })
+            document.getElementById('month').textContent = months[0] + ' - ' + months[(month + 1) % weeksDiff]; //it displays range from January (0) and the month
+        }
+
+        function jsonCallback(err, data) {
+            if (err) {
+                throw err;
+            }
+            data.features = data.features.map((d) => {
+                const oneWeek = 1000 * 60 * 60 * 24 * 7; // milliseconds in one week
+                d.properties.month = Math.floor((new Date(d.properties.timestamp) - startDate) / oneWeek); // calculate the week number
+                // d.properties.month = new Date(d.properties.timestamp).getMonth(); //gets number of month and refers it to the slider positione (weekDiff)
+                // console.log(d)
+                return d;
+            });
+            map.addSource('shelling', {
+                'type': 'geojson',
+                data: data
+            });
+
+            // create a separate layer for each sheet_mame
+            Object.keys(icons).forEach(weapon => {
+                map.addLayer({
+                    'id': `targets-Mykolaiv-${weapon}`,
+                    'type': 'circle',
+                    'source': 'shelling',
+                    'filter': ['==', 'sheet_name', weapon],
+                    paint: {
+                        'circle-color': [
+                            'interpolate',
+                            ['linear'],
+                            ['get', 'scale'],
+                            2,
+                            '#FCA107',
+                            6,
+                            '#fc6507',
+                            8,
+                            '#fc2407',
+                            18,
+                            '#7F3121'
+                        ],
+                        // "circle-color": icons[weapon], //getting color of each layer
+                        // "circle-radius": 8,
+                        'circle-radius': [ //getting scale directly from the geojson
+                            'interpolate',
+                            ['linear'],
+                            ['get', 'scale'],
+                            2,
+                            6,
+                            8,
+                            16],
+                        'circle-opacity': 0.6
+                    },
+                    // 'layout': {
+                    //     'icon-image': `weapon-icon-${weapon}`,
+                    //     'icon-size': 0.09
+                    // }
+                });
+            });
+
+            data.features.forEach(readGeojson);
+
+            // rest of the code...
+            function readGeojson(item) {
+                let weapon = item.properties.sheet_name;
+                // console.log(weapon);
+                if (icons[weapon]) {
+                    const imageUrl = icons[weapon];
+                    console.log(imageUrl);
+                    const imageId = `weapon-icon-${weapon}`; // add a unique identifier
+                    console.log(imageId);
+                    if (!map.hasImage(imageId)) {
+                        const img = new Image();
+                        img.onload = function() {
+                            // map.addImage(imageId, img);
+                            if (!map.hasImage(imageId)) {
+                                map.addImage(imageId, img);
+                            }
+
+                            map.setLayoutProperty(`targets-Mykolaiv-${weapon}`, 'circle-color', ['match', ['get', 'sheet_name'], weapon, imageId, '']);
+                        };
+                        img.src = imageUrl;
+                    } else {
+                        map.setLayoutProperty(`targets-Mykolaiv-${weapon}`, 'circle-color', ['match', ['get', 'sheet_name'], weapon, imageId, '']);
+                    }
+                }
+            }
+            /*popup block*/
+            Object.keys(icons).forEach(weapon => {
+                map.on('click', (event) => {
+                    const features = map.queryRenderedFeatures(event.point, {
+                        layers: [`targets-Mykolaiv-${weapon}`]
+                    });
+                    if (!features.length) {
+                        return;
+                    }
+                    const feature = features[0];
+
+                    const popup = new mapboxgl.Popup({ offset: [0, -15] })
+                        .setLngLat(feature.geometry.coordinates)
+                        .setHTML(
+                            `\<p>${feature.properties.description}</p>
+                           \<p>${feature.properties.date}</p>`
+                        )
+                        .addTo(map);
+                });
+            });
+
+            document.getElementById('slider').addEventListener('input', (e) => {
+                const month = parseInt(e.target.value, 10);
+                console.log("getting month" + month)
+                filterBy(month);
+            });
+        }
+    </script>
+
+</body>
+
+</html>

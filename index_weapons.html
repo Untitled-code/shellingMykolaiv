@@ -66,23 +66,25 @@
 
     <div id="map"></div>
 
+    <!-- Putting js variable into slider htaml to make scale correct   -->
     <div class="map-overlay top">
         <div class="map-overlay-inner">
-            <h2>З чого обстрілювали Миколаївщину у 2022 році</h2>
+            <h2>З яких видів озброєнь обстрілювали рашисти</h2>
             <label id="month"></label>
-            <input id="slider" type="range" min="0" max="100" step="1" value="0">
-        </div>
-        <div class="map-overlay-inner">
-            <div id="legend" class="legend">
-                <!--      <div class="bar"></div>-->
-                <div>Види озброєнь
-                    <p>Артилерія та РСЗВ</p>
-                    <p>Ракети</p>
-                    <p>Касетні боєприпаси</p>
-                </div>
-            </div>
+            <input id="slider" type="range" min="0" step="1" value="0">
         </div>
     </div>
+    <script>
+        const sDate = new Date("2022-02-24");
+        const tday = new Date();
+        // Calculate the number of weeks between start date and today
+        const wDiff = Math.floor((tday - sDate) / (1000 * 60 * 60 * 24 * 7) - 2);
+
+        window.onload = function() {
+            // Set the max attribute of the slider
+            document.getElementById('slider').max = wDiff;
+        }
+    </script>
 
     <script src="https://d3js.org/d3.v3.min.js" charSet="utf-8"></script>
     <script>
@@ -168,6 +170,10 @@
                     'type': 'symbol',
                     'source': 'shelling',
                     'filter': ['==', 'sheet_name', weapon],
+                    'icon-allow-overlap': 'true',
+                    // 'text-allow-overlap': 'true',
+                    'icon-ignore-placement': 'true',
+                    // 'text-ignore-placement': 'true',
                     'layout': {
                         'icon-image': `weapon-icon-${weapon}`,
                         'icon-size': 0.09
